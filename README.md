@@ -1,4 +1,4 @@
-# Gemma 4 OpenAI API on Tailscale
+# DGX Spark Gemma 4 OpenAI API on Tailscale
 
 This project serves your local cached `google/gemma-4-31B-it` model through a vLLM OpenAI-compatible API and binds it only on your Tailscale IPv4.
 
@@ -14,7 +14,7 @@ Current local assumptions:
 - Host identified as NVIDIA DGX Spark with one GB10 GPU on CUDA `13.0`
 - Local memory report: about `119 GiB` total unified memory available to the system
 
-## Tested container versions
+## Tested Container Versions
 
 The currently working container versions on this single-node DGX system are:
 
@@ -22,7 +22,7 @@ The currently working container versions on this single-node DGX system are:
   - image ID: `sha256:9afe08ebfa30ea7889d8792ad1f9815ce92e1ba742b3900703f5b12b36f982f8`
 - `redis@sha256:7b6fb55d8b0adcd77269dc52b3cfffe5f59ca5d43dec3c90dbe18aacce7942e1` for the local `redis-queue` container
 
-## Why this shape
+## Why This Shape
 
 - vLLM exposes an OpenAI-compatible `/v1` API.
 - This is aligned to NVIDIA's DGX Spark playbook for Gemma 4, which says to use the custom `vllm/vllm-openai:gemma4-cu130` container for the Gemma 4 family.
@@ -31,6 +31,8 @@ The currently working container versions on this single-node DGX system are:
 - The default config forces offline Hugging Face resolution so the server uses your local cache instead of trying to redownload the model.
 - The DGX Spark defaults are tuned above the conservative baseline: full multimodal enabled, `32768` context, FP8 KV cache, and async scheduling.
 - Telemetry and usage reporting are disabled by default with `HF_HUB_OFFLINE=1`, `TRANSFORMERS_OFFLINE=1`, `VLLM_NO_USAGE_STATS=1`, and `DO_NOT_TRACK=1`.
+
+Key idea: 🚀 fast local serving, 🔒 tailnet-only exposure, and 📴 offline model use from the local Hugging Face cache.
 
 The NVIDIA playbook's Gemma 4 test command is effectively:
 
@@ -59,6 +61,8 @@ hf download google/gemma-4-31B-it
 
 This setup assumes the Hugging Face cache already contains the Gemma 4 snapshot and that the server will run in offline mode against that local cache.
 
+Tip: 📦 download the model once up front, then keep runtime fully offline.
+
 ## Prerequisites
 
 - DGX Spark with Docker and NVIDIA container runtime working
@@ -66,7 +70,7 @@ This setup assumes the Hugging Face cache already contains the Gemma 4 snapshot 
 - Local Gemma 4 weights already downloaded with `hf download google/gemma-4-31B-it`
 - Tailscale running on the Spark if you want tailnet access
 
-## 1. Create the env file
+## 1. Create The Env File
 
 ```bash
 cp .env.example .env
@@ -90,7 +94,7 @@ Default sizing is tuned for this DGX Spark:
 
 If startup fails on memory pressure, reduce `MAX_MODEL_LEN` first.
 
-## 2. Start the API
+## 2. Start The API
 
 ```bash
 docker compose --env-file .env -f compose.yaml up -d
@@ -108,7 +112,7 @@ Stop it:
 docker compose --env-file .env -f compose.yaml down
 ```
 
-## 3. Verify the endpoint
+## 3. Verify The Endpoint
 
 List models:
 
@@ -134,7 +138,7 @@ The local smoke-test base URL on the Spark itself will be:
 http://127.0.0.1:8001/v1
 ```
 
-## 4. Use it from an OpenAI client
+## 4. Use It From An OpenAI Client
 
 ```python
 from openai import OpenAI
@@ -152,7 +156,7 @@ resp = client.chat.completions.create(
 print(resp.choices[0].message.content)
 ```
 
-## 5. Optional systemd service
+## 5. Optional systemd Service
 
 Install the unit:
 
@@ -177,6 +181,13 @@ journalctl -u gemma4-tailnet.service -f
 - Multimodal stays enabled by default on this DGX Spark profile.
 - If you want a lower-memory text-only server, set `VLLM_LANGUAGE_ONLY_FLAG=--language-model-only`.
 - If you want reasoning and tool calling support, that is already enabled through the Gemma 4 parser flags.
+
+Operational summary:
+
+- 🧠 Model: `google/gemma-4-31B-it`
+- 🌐 Tailnet endpoint: `http://100.xxx.xxx.xxx:8000/v1`
+- 🧪 Local smoke-test endpoint: `http://127.0.0.1:8001/v1`
+- 🔑 Auth: OpenAI-style bearer token via `OPENAI_API_KEY`
 
 ## Sources
 
