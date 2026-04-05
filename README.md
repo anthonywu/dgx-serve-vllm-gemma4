@@ -79,9 +79,27 @@ cp .env.example .env
 Edit `.env` and set:
 
 - `OPENAI_API_KEY` to a real secret
-- `TAILSCALE_IP` to your own Tailscale IPv4
+- `TAILSCALE_IP` to your own Tailscale IPv4 (or auto-detect it, see below)
 - `VLLM_LANGUAGE_ONLY_FLAG=` to empty if you want image or audio inputs
 - `VLLM_EXTRA_ARGS` for extra tuning flags
+
+### Auto-detect Tailscale IP
+
+Instead of looking up your Tailscale IP manually, let the detection script find it:
+
+```bash
+# Print the detected IP
+./scripts/detect-tailscale-ip.sh
+
+# Detect and write it into .env automatically
+./scripts/detect-tailscale-ip.sh --update
+
+# Or via just
+just detect-ip     # print only
+just update-ip     # detect and update .env
+```
+
+If your Tailscale IP changes later (device reconnect, new tailnet), run `just update-ip` again and restart the service.
 
 The `100.xxx.xxx.xxx` value used in this README is a placeholder only. Each Tailscale device gets its own tailnet IP, so you must replace it with the actual IP for the machine serving vLLM.
 
@@ -158,12 +176,20 @@ print(resp.choices[0].message.content)
 
 ## 5. Optional systemd Service
 
-Install the unit:
+Install the unit using the templated installer (automatically uses the current project directory):
 
 ```bash
-sudo cp systemd/gemma4-tailnet.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now gemma4-tailnet.service
+just install-service
+# or directly:
+sudo ./scripts/install-service.sh
+```
+
+This generates `gemma4-tailnet.service` from the template at `systemd/gemma4-tailnet.service.template`, substituting the current working directory for all paths. No manual path editing required.
+
+To install without auto-enabling on boot:
+
+```bash
+sudo ./scripts/install-service.sh --no-enable
 ```
 
 Inspect service state:
@@ -177,7 +203,7 @@ journalctl -u gemma4-tailnet.service -f
 
 - By default this only binds on your current Tailscale IPv4, not `0.0.0.0`.
 - Local verification uses `127.0.0.1:8001`, which matches the playbook's `curl localhost` style more closely.
-- If your Tailscale IP changes, update `.env` and restart the service.
+- If your Tailscale IP changes, run `just update-ip` and restart the service.
 - Multimodal stays enabled by default on this DGX Spark profile.
 - If you want a lower-memory text-only server, set `VLLM_LANGUAGE_ONLY_FLAG=--language-model-only`.
 - If you want reasoning and tool calling support, that is already enabled through the Gemma 4 parser flags.

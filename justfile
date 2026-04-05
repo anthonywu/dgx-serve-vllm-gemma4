@@ -10,3 +10,15 @@ lint-privacy:
     exit 1; \
   fi
   @echo "lint-privacy passed"
+
+# Detect and print the Tailscale IPv4 address of this machine
+detect-ip:
+  @./scripts/detect-tailscale-ip.sh
+
+# Detect the Tailscale IP and write it into .env
+update-ip:
+  @./scripts/detect-tailscale-ip.sh --update
+
+# Generate and install the systemd service (requires sudo)
+install-service:
+  sudo ./scripts/install-service.sh
