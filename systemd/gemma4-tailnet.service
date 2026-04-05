@@ -1,0 +1,16 @@
+[Unit]
+Description=Gemma 4 OpenAI-compatible API on Tailscale
+After=network-online.target tailscaled.service docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/home/anthonywu/workspace/dgx-serve
+ExecStart=/usr/bin/docker compose --env-file /home/anthonywu/workspace/dgx-serve/.env -f /home/anthonywu/workspace/dgx-serve/compose.yaml up -d
+ExecStop=/usr/bin/docker compose --env-file /home/anthonywu/workspace/dgx-serve/.env -f /home/anthonywu/workspace/dgx-serve/compose.yaml down
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
